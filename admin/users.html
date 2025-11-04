@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Usuarios</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <main>
+    <h1>Gestión de usuarios</h1>
+    <p><a href="/admin/dashboard.html">Volver al panel</a></p>
+
+    <div>
+      <h2>Usuarios</h2>
+      <ul id="usersList">Cargando...</ul>
+    </div>
+
+    <div>
+      <h2>Añadir usuario</h2>
+      <form id="addForm">
+        <label>Usuario<br><input id="newUser" required></label>
+        <label>Contraseña<br><input id="newPass" type="password" required></label>
+        <button>Añadir</button>
+      </form>
+    </div>
+
+    <div id="status"></div>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="/assets/js/github-api.js"></script>
+  <script>
+    (async function () {
+      const cfg = window.BLOG_CONFIG;
+      const status = document.getElementById('status');
+      async function load() {
+        try {
+          const data = await GitHubAPI.getFile(cfg.USERS_PATH);
+          if (!data) { document.getElementById('usersList').innerHTML = '<li>No hay usuarios</li>'; return; }
+          const content = data.content ? atob(data.content) : '[]';
+          const users = JSON.parse(content);
+          document.getElementById('usersList').innerHTML = users.map(u => `<li>${u.user} <button data-user="${u.user}" class="del">Eliminar</button></li>`).join('') || '<li>No hay usuarios</li>';
+          document.querySelectorAll('.del').forEach(b => b.addEventListener('click', async (e) => {
+            const user = e.currentTarget.getAttribute('data-user');
+            if (!confirm('Eliminar usuario '+user+'?')) return;
+            const newUsers = users.filter(x => x.user !== user);
+            const md = JSON.stringify(newUsers, null, 2);
+            const base64 = btoa(unescape(encodeURIComponent(md)));
+            await GitHubAPI.putFile(cfg.USERS_PATH, base64, `chore: actualizar usuarios`);
+            status.textContent = 'Usuario eliminado';
+            setTimeout(load, 400);
+          }));
+        } catch (err) {
+          status.textContent = 'Error cargando usuarios: '+err.message;
+        }
+      }
+
+      document.getElementById('addForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const u = document.getElementById('newUser').value.trim();
+        const p = document.getElementById('newPass').value;
+        if (!u || !p) return;
+        try {
+          const data = await GitHubAPI.getFile(cfg.USERS_PATH);
+          const content = data && data.content ? atob(data.content) : '[]';
+          const users = JSON.parse(content);
+          if (users.find(x => x.user === u)) return alert('Usuario ya existe');
+          users.push({ user: u, password: md5(p) });
+          const md = JSON.stringify(users, null, 2);
+          const base64 = btoa(unescape(encodeURIComponent(md)));
+          await GitHubAPI.putFile(cfg.USERS_PATH, base64, `chore: añadir usuario ${u}`);
+          status.textContent = 'Usuario añadido';
+          document.getElementById('newUser').value = '';
+          document.getElementById('newPass').value = '';
+          setTimeout(load, 300);
+        } catch (err) {
+          status.textContent = 'Error al añadir: '+err.message;
+        }
+      });
+
+      load();
+    })();
+  </script>
+</body>
+</html>

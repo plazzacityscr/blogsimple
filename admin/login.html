@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Login</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <main>
+    <h1>Administración — Login</h1>
+    <form id="loginForm">
+      <label>Usuario<br><input id="user" required></label><br>
+      <label>Contraseña<br><input id="pass" type="password" required></label><br>
+      <label>Token GitHub (opcional para pruebas: si se deja vacío, solo lectura local)<br><input id="token"></label><br>
+      <button type="submit">Entrar</button>
+    </form>
+    <p>Aviso: el token se guardará en localStorage para firmar peticiones a la API de GitHub si se facilita.</p>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+  <script src="/assets/js/github-api.js"></script>
+  <script>
+    (function () {
+      const cfg = window.BLOG_CONFIG;
+      const form = document.getElementById('loginForm');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const user = document.getElementById('user').value.trim();
+        const pass = document.getElementById('pass').value;
+        const token = document.getElementById('token').value.trim();
+        if (!user || !pass) return alert('Complete usuario y contraseña');
+
+        if (token) localStorage.setItem('gh_token', token);
+
+        try {
+          // intentar leer data/users.json localmente primero
+          const res = await fetch('/data/users.json');
+          if (!res.ok) throw new Error('No se encontró data/users.json en el servidor');
+          const users = await res.json();
+          const found = users.find(u => u.user === user && u.password === md5(pass));
+          if (!found) {
+            if (token) localStorage.removeItem('gh_token');
+            return alert('Usuario o contraseña incorrectos');
+          }
+          localStorage.setItem('admin_user', user);
+          location.href = '/admin/dashboard.html';
+        } catch (err) {
+          if (token) localStorage.removeItem('gh_token');
+          alert('Error al autenticar: ' + err.message);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

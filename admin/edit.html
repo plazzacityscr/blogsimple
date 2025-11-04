@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Editar artículo</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <main>
+    <h1>Editar artículo</h1>
+    <p><a href="/admin/dashboard.html">Volver al panel</a></p>
+
+    <form id="postForm">
+      <input type="hidden" id="filePath">
+      <input type="hidden" id="fileSha">
+      <label>Título<br><input id="title" required></label><br>
+      <label>Slug (sin espacios)<br><input id="slug"></label><br>
+      <label>Fecha (ISO)<br><input id="date"></label><br>
+      <label>Entradilla<br><textarea id="excerpt" rows="3"></textarea></label><br>
+
+      <label>Categorías (mantener Ctrl/Cmd para múltiples)<br>
+        <select id="categories" multiple size="5"></select>
+      </label><br>
+
+      <p>Imágenes actuales: <span id="currentImages"></span></p>
+      <label>Reemplazar imagen destacada<br><input type="file" id="imageFeatured" accept="image/*"></label><br>
+      <label>Reemplazar imagen A<br><input type="file" id="imageA" accept="image/*"></label><br>
+      <label>Reemplazar imagen B<br><input type="file" id="imageB" accept="image/*"></label><br>
+
+      <label>Contenido (Markdown)<br><textarea id="content" rows="15" required></textarea></label><br>
+
+      <button type="submit">Guardar cambios</button>
+      <button id="previewBtn">Mostrar .md</button>
+      <button id="saveLocalBtn">Guardar localmente</button>
+    </form>
+
+    <div id="status" role="status" aria-live="polite"></div>
+    <h3>Vista previa Markdown</h3>
+    <pre id="previewMd" style="white-space:pre-wrap;background:#f6f6f6;padding:0.5rem;border:1px solid #ddd;max-height:400px;overflow:auto;"></pre>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/github-api.js"></script>
+  <script src="/assets/js/admin-post.js"></script>
+  <script>
+    (function () {
+      if (!localStorage.getItem('admin_user')) return location.href = '/admin/login.html';
+      const params = new URLSearchParams(location.search);
+      const file = params.get('file');
+      if (!file) {
+        document.getElementById('status').textContent = 'Falta parámetro file en la URL.';
+        return;
+      }
+      AdminPost.initEdit(file);
+    })();
+  </script>
+</body>
+</html>

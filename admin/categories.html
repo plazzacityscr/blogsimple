@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Categorías</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <main>
+    <h1>Gestión de categorías</h1>
+    <p><a href="/admin/dashboard.html">Volver al panel</a></p>
+
+    <div>
+      <h2>Categorías actuales</h2>
+      <ul id="catsList">Cargando...</ul>
+    </div>
+
+    <div>
+      <h2>Añadir categoría</h2>
+      <form id="addForm">
+        <input id="newCat" placeholder="nombre categoría" required>
+        <button>Añadir</button>
+      </form>
+    </div>
+
+    <div id="status"></div>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/github-api.js"></script>
+  <script>
+    (async function () {
+      const cfg = window.BLOG_CONFIG;
+      const status = document.getElementById('status');
+      async function load() {
+        try {
+          const data = await GitHubAPI.getFile(cfg.CATEGORIES_PATH);
+          if (!data) { document.getElementById('catsList').innerHTML = '<li>No hay categorías</li>'; return; }
+          const content = data.content ? atob(data.content) : JSON.stringify([]);
+          const cats = JSON.parse(content);
+          document.getElementById('catsList').innerHTML = cats.map(c => `<li>${c} <button data-cat="${c}" class="del">Eliminar</button></li>`).join('') || '<li>No hay categorías</li>';
+          document.querySelectorAll('.del').forEach(b => b.addEventListener('click', async (e) => {
+            const cat = e.currentTarget.getAttribute('data-cat');
+            if (!confirm('Eliminar categoría '+cat+'?')) return;
+            const newCats = cats.filter(x => x !== cat);
+            const md = JSON.stringify(newCats, null, 2);
+            const base64 = btoa(unescape(encodeURIComponent(md)));
+            await GitHubAPI.putFile(cfg.CATEGORIES_PATH, base64, `chore: actualizar categorias`);
+            status.textContent = 'Categoría eliminada';
+            setTimeout(load, 400);
+          }));
+        } catch (err) {
+          status.textContent = 'Error cargando categorías: '+err.message;
+        }
+      }
+
+      document.getElementById('addForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const v = document.getElementById('newCat').value.trim();
+        if (!v) return;
+        try {
+          const data = await GitHubAPI.getFile(cfg.CATEGORIES_PATH);
+          const content = data && data.content ? atob(data.content) : '[]';
+          const cats = JSON.parse(content);
+          if (cats.includes(v)) return alert('Ya existe');
+          cats.push(v);
+          const md = JSON.stringify(cats, null, 2);
+          const base64 = btoa(unescape(encodeURIComponent(md)));
+          await GitHubAPI.putFile(cfg.CATEGORIES_PATH, base64, `chore: añadir categoria ${v}`);
+          status.textContent = 'Categoría añadida';
+          document.getElementById('newCat').value = '';
+          setTimeout(load, 300);
+        } catch (err) {
+          status.textContent = 'Error al añadir: '+err.message;
+        }
+      });
+
+      load();
+    })();
+  </script>
+</body>
+</html>

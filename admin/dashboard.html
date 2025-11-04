@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Panel</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+  <main>
+    <h1>Panel de administración</h1>
+    <p>Usuario: <span id="userName"></span> <button id="logout">Cerrar sesión</button></p>
+    <p><a href="/admin/new.html">Crear nuevo artículo</a> | <a href="/admin/categories.html">Categorías</a> | <a href="/admin/users.html">Usuarios</a></p>
+    <section id="postsList"><p>Cargando...</p></section>
+  </main>
+
+  <script src="/assets/js/config.js"></script>
+  <script src="/assets/js/github-api.js"></script>
+  <script>
+    (async function () {
+      const user = localStorage.getItem('admin_user');
+      if (!user) return location.href = '/admin/login.html';
+      document.getElementById('userName').textContent = user;
+      document.getElementById('logout').addEventListener('click', () => {
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('gh_token');
+        location.href = '/admin/login.html';
+      });
+
+      const cfg = window.BLOG_CONFIG;
+      try {
+        const items = await GitHubAPI.listDir(cfg.BLOG_PATH);
+        if (!items || !items.length) {
+          document.getElementById('postsList').innerHTML = '<p>No hay artículos.</p>';
+          return;
+        }
+        document.getElementById('postsList').innerHTML = '<ul>' + items.filter(i => (i.type ? i.type === 'file' : true) && i.name && i.name.endsWith('.md')).map(i => {
+          const name = i.name || (i.path ? i.path.split('/').pop() : '');
+          const slug = name.replace(/\.md$/, '');
+          const path = i.path || `${cfg.BLOG_PATH}/${name}`;
+          return `<li>${name} — <a href="/admin/edit.html?file=${encodeURIComponent(path)}">Editar</a> | <a href="#" data-path="${path}" class="del">Eliminar</a></li>`;
+        }).join('') + '</ul>';
+
+        document.querySelectorAll('.del').forEach(a => {
+          a.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!confirm('Eliminar archivo?')) return;
+            const path = e.currentTarget.getAttribute('data-path');
+            const token = localStorage.getItem('gh_token');
+            if (!token) return alert('Token no encontrado: para eliminar es necesario un token con permisos.');
+
+            try {
+              const meta = await GitHubAPI.getFile(path);
+              if (!meta || !meta.sha) throw new Error('No se obtuvo SHA del fichero para eliminar');
+              await GitHubAPI.deleteFile(path, meta.sha, `chore: eliminar ${path}`);
+              alert('Fichero eliminado correctamente');
+              location.reload();
+            } catch (err) {
+              alert('Error eliminando: ' + err.message);
+            }
+          });
+        });
+
+      } catch (err) {
+        document.getElementById('postsList').innerHTML = '<p>Error al listar artículos: ' + err.message + '</p>';
+      }
+    })();
+  </script>
+</body>
+</html>

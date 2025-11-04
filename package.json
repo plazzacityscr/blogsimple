@@ -1,0 +1,17 @@
+{
+  "name": "blogsimple",
+  "version": "0.1.0",
+  "description": "Blog estático con administración vía API de GitHub (scaffolding)",
+  "scripts": {
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^9.0.4",
+  "fs-extra": "^11.1.1",
+  "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
